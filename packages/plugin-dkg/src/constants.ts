@@ -184,3 +184,8 @@ export const DKG_EXPLORER_LINKS = {
     testnet: "https://dkg-testnet.origintrail.io/explore?ual=",
     mainnet: "https://dkg.origintrail.io/explore?ual=",
 };
+
+export const ACTIONS = {
+    QUERY: "query",
+    CREATE: "create",
+};

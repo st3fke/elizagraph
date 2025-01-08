@@ -15,12 +15,72 @@ import {
     dkgMemoryTemplate,
     generalSparqlQuery,
     sparqlExamples,
-    DKG_EXPLORER_LINKS
+    DKG_EXPLORER_LINKS,
+    ACTIONS,
 } from "../constants.ts";
 // @ts-ignore
 import DKG from "dkg.js";
+import { sendNotification } from "../http-helper.ts";
+import { Scraper } from "agent-twitter-client";
 
+export async function postTweet(content: string): Promise<boolean> {
+    try {
+        const scraper = new Scraper();
+        const username = process.env.TWITTER_USERNAME;
+        const password = process.env.TWITTER_PASSWORD;
+        const email = process.env.TWITTER_EMAIL;
+        const twitter2faSecret = process.env.TWITTER_2FA_SECRET;
 
+        if (!username || !password) {
+            elizaLogger.error(
+                "Twitter credentials not configured in environment"
+            );
+            return false;
+        }
+
+        // Login with credentials
+        await scraper.login(username, password, email, twitter2faSecret);
+        if (!(await scraper.isLoggedIn())) {
+            elizaLogger.error("Failed to login to Twitter");
+            return false;
+        }
+
+        // Send the tweet
+        elizaLogger.log("Attempting to send tweet:", content);
+        const result = await scraper.sendTweet(content);
+
+        const body = await result.json();
+        elizaLogger.log("Tweet response:", body);
+
+        // Check for Twitter API errors
+        if (body.errors) {
+            const error = body.errors[0];
+            elizaLogger.error(
+                `Twitter API error (${error.code}): ${error.message}`
+            );
+            return false;
+        }
+
+        // Check for successful tweet creation
+        if (!body?.data?.create_tweet?.tweet_results?.result) {
+            elizaLogger.error(
+                "Failed to post tweet: No tweet result in response"
+            );
+            return false;
+        }
+
+        return true;
+    } catch (error) {
+        // Log the full error details
+        elizaLogger.error("Error posting tweet:", {
+            message: error.message,
+            stack: error.stack,
+            name: error.name,
+            cause: error.cause,
+        });
+        return false;
+    }
+}
 
 const DkgClient = new DKG({
     environment: process.env.ENVIRONMENT,
@@ -36,8 +96,6 @@ const DkgClient = new DKG({
     contentType: "all",
     nodeApiVersion: "/v1",
 });
-
-
 
 async function constructKnowledgeAsset(
     runtime: IAgentRuntime,
@@ -97,18 +155,27 @@ export const dkgInsert: Action = {
     validate: async (_runtime: IAgentRuntime, _message: Memory) => {
         return true;
     },
-    description:
-    "DKG insert on tweet mention",
+    description: "DKG insert on tweet mention",
     handler: async (
         _runtime: IAgentRuntime,
         _message: Memory,
         _state: State,
-        _options: {[key:string]:unknown},
-        _callback: HandlerCallback,
+        _options: { [key: string]: unknown },
+        _callback: HandlerCallback
     ): Promise<boolean> => {
         console.log("currentPost");
         console.log(_state.currentPost);
 
+        const userRegex = /From:.*\(@(\w+)\)/;
+        const match = String(_state.currentPost).match(userRegex);
+        let twitterUser = "";
+
+        if (match && match[1]) {
+            twitterUser = match[1];
+            console.log(`Extracted user: @${twitterUser}`);
+        } else {
+            console.error("No user mention found or invalid input.");
+        }
         const additionalContext = String(_state.recentMessageInteractions);
         const postKnowledgeGraph = await constructKnowledgeAsset(
             _runtime,
@@ -117,15 +184,26 @@ export const dkgInsert: Action = {
             _state
         );
 
-        console.log('Publishing message to DKG');
+        console.log("Publishing message to DKG");
         const createAssetResult = await DkgClient.asset.create(
             {
-                public: postKnowledgeGraph
+                public: postKnowledgeGraph,
             },
-            { epochsNum: 12 },
+            { epochsNum: 12 }
         );
-        console.log('======================== ASSET CREATED');
+        console.log("======================== ASSET CREATED");
         console.log(createAssetResult);
+
+        // postAction
+        await postTweet(
+            `Created a new memory!\nRead my mind on @origin_trail Decentralized Knowledge Graph ${DKG_EXPLORER_LINKS.testnet}${createAssetResult.UAL} @${twitterUser}`
+        );
+
+        // await sendNotification(
+        //     ACTIONS.CREATE,
+        //     [createAssetResult.UAL],
+        //     postKnowledgeGraph.articleBody ?? postKnowledgeGraph.headline
+        // );
 
         return true;
     },
@@ -133,12 +211,15 @@ export const dkgInsert: Action = {
         [
             {
                 user: "{{user1}}",
-                content: { text: "execute action DKG_INSERT", action: "DKG_INSERT" },
+                content: {
+                    text: "execute action DKG_INSERT",
+                    action: "DKG_INSERT",
+                },
             },
             {
                 user: "{{user2}}",
                 content: { text: "DKG INSERT" },
-            }
+            },
         ],
         [
             {
@@ -148,7 +229,7 @@ export const dkgInsert: Action = {
             {
                 user: "{{user2}}",
                 content: { text: "DKG INSERT" },
-            }
+            },
         ],
         [
             {
@@ -158,7 +239,7 @@ export const dkgInsert: Action = {
             {
                 user: "{{user2}}",
                 content: { text: "DKG INSERT" },
-            }
-        ]
+            },
+        ],
     ] as ActionExample[][],
 } as Action;
