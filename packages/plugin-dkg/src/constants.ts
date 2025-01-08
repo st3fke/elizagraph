@@ -1,98 +1,151 @@
 // TODO: add isConnectedTo field or similar which you will use to connect w other KAs
 export const dkgMemoryTemplate = {
-    "@context": "https://schema.org",
+    "@context": "http://schema.org",
     "@type": "SocialMediaPosting",
-    "headline": "Check out this amazing project on decentralized cloud networks!",
-    "articleBody": "Check out this amazing project on decentralized cloud networks! @DecentralCloud #Blockchain #Web3",
-    "author": {
-      "@type": "Person",
-      "name": "John Doe",
-      "identifier": "@JohnDoe",
-      "url": "https://twitter.com/JohnDoe",
-      "sameAs": [
-        "https://github.com/JohnDoe",
-        "https://linkedin.com/in/JohnDoe"
-      ]
-    },
-    "datePublished": "2025-01-07T10:15:00+00:00",
-    "interactionStatistic": [
-      {
-        "@type": "InteractionCounter",
-        "interactionType": {
-          "@type": "LikeAction"
-        },
-        "userInteractionCount": 150
-      },
-      {
-        "@type": "InteractionCounter",
-        "interactionType": {
-          "@type": "ShareAction"
-        },
-        "userInteractionCount": 45
-      }
-    ],
-    "mentions": [
-      {
+    headline: "<describe memory in a short way, as a title here>",
+    articleBody:
+        "Check out this amazing project on decentralized cloud networks! @DecentralCloud #Blockchain #Web3",
+    author: {
         "@type": "Person",
-        "name": "Decentralized Cloud Project",
-        "identifier": "@DecentralCloud",
-        "url": "https://twitter.com/DecentralCloud"
-      }
+        "@id": "uuid:john:doe",
+        name: "John Doe",
+        identifier: "@JohnDoe",
+        url: "https://twitter.com/JohnDoe",
+    },
+    dateCreated: "yyyy-mm-ddTHH:mm:ssZ",
+    interactionStatistic: [
+        {
+            "@type": "InteractionCounter",
+            interactionType: {
+                "@type": "LikeAction",
+            },
+            userInteractionCount: 150,
+        },
+        {
+            "@type": "InteractionCounter",
+            interactionType: {
+                "@type": "ShareAction",
+            },
+            userInteractionCount: 45,
+        },
     ],
-    "keywords": [
-      "Blockchain",
-      "Web3",
-      "Decentralized Cloud"
+    mentions: [
+        {
+            "@type": "Person",
+            name: "Twitter account mentioned name goes here",
+            identifier: "@TwitterAccount",
+            url: "https://twitter.com/TwitterAccount",
+        },
     ],
-    "about": [
-      {
-        "@type": "Thing",
-        "name": "Blockchain",
-        "url": "https://en.wikipedia.org/wiki/Blockchain"
-      },
-      {
-        "@type": "Thing",
-        "name": "Web3",
-        "url": "https://en.wikipedia.org/wiki/Web3"
-      },
-      {
-        "@type": "Thing",
-        "name": "Decentralized Cloud",
-        "url": "https://example.com/DecentralizedCloud"
-      }
+    keywords: [
+        {
+            "@type": "Text",
+            "@id": "uuid:keyword1",
+            name: "keyword1",
+        },
+        {
+            "@type": "Text",
+            "@id": "uuid:keyword2",
+            name: "keyword2",
+        },
     ],
-    "url": "https://twitter.com/JohnDoe/status/1234567890"
-  }
-  ;
-  // associatedMedia: { can be twt image
-  //   "@type": "MediaObject",
-  //   contentUrl: "https://example.com/user-query-audio.mp3",
-  //   encodingFormat: "audio/mpeg",
-  // },
+    about: [
+        {
+            "@type": "Thing",
+            "@id": "uuid:thing1",
+            name: "Blockchain",
+            url: "https://en.wikipedia.org/wiki/Blockchain",
+        },
+        {
+            "@type": "Thing",
+            "@id": "uuid:thing2",
+            name: "Web3",
+            url: "https://en.wikipedia.org/wiki/Web3",
+        },
+        {
+            "@type": "Thing",
+            "@id": "uuid:thing3",
+            name: "Decentralized Cloud",
+            url: "https://example.com/DecentralizedCloud",
+        },
+    ],
+    url: "https://twitter.com/JohnDoe/status/1234567890",
+};
+// associatedMedia: { can be twt image
+//   "@type": "MediaObject",
+//   contentUrl: "https://example.com/user-query-audio.mp3",
+//   encodingFormat: "audio/mpeg",
+// },
 
-  export const sparqlExamples = [
-    `
-    SELECT DISTINCT ?name ?description ?contentText
+export const combinedSparqlExample = `
+SELECT DISTINCT ?headline ?articleBody
     WHERE {
-      ?s a <http://schema.org/CreativeWork> .
-      ?s <http://schema.org/name> ?name .
-      ?s <http://schema.org/description> ?description .
-      ?s <http://schema.org/content> ?content .
-      ?content <http://schema.org/text> ?contentText .
+      ?s a <http://schema.org/SocialMediaPosting> .
+      ?s <http://schema.org/headline> ?headline .
+      ?s <http://schema.org/articleBody> ?articleBody .
+
+      OPTIONAL {
+        ?s <http://schema.org/keywords> ?keyword .
+        ?keyword <http://schema.org/name> ?keywordName .
+      }
+
+      OPTIONAL {
+        ?s <http://schema.org/about> ?about .
+        ?about <http://schema.org/name> ?aboutName .
+      }
+
       FILTER(
-        CONTAINS(LCASE(?description), "example_word1") ||
-        CONTAINS(LCASE(?description), "example_word2")
+        CONTAINS(LCASE(?headline), "example_keyword") ||
+        (BOUND(?keywordName) && CONTAINS(LCASE(?keywordName), "example_keyword")) ||
+        (BOUND(?aboutName) && CONTAINS(LCASE(?aboutName), "example_keyword"))
+      )
+    }
+    LIMIT 10`;
+
+export const sparqlExamples = [
+    `
+    SELECT DISTINCT ?headline ?articleBody
+    WHERE {
+      ?s a <http://schema.org/SocialMediaPosting> .
+      ?s <http://schema.org/headline> ?headline .
+      ?s <http://schema.org/articleBody> ?articleBody .
+
+      OPTIONAL {
+        ?s <http://schema.org/keywords> ?keyword .
+        ?keyword <http://schema.org/name> ?keywordName .
+      }
+
+      OPTIONAL {
+        ?s <http://schema.org/about> ?about .
+        ?about <http://schema.org/name> ?aboutName .
+      }
+
+      FILTER(
+        CONTAINS(LCASE(?headline), "example_keyword") ||
+        (BOUND(?keywordName) && CONTAINS(LCASE(?keywordName), "example_keyword")) ||
+        (BOUND(?aboutName) && CONTAINS(LCASE(?aboutName), "example_keyword"))
+      )
+    }
+    LIMIT 10
+    `,
+    `
+    SELECT DISTINCT ?headline ?articleBody
+    WHERE {
+      ?s a <http://schema.org/SocialMediaPosting> .
+      ?s <http://schema.org/headline> ?headline .
+      ?s <http://schema.org/articleBody> ?articleBody .
+      FILTER(
+        CONTAINS(LCASE(?headline), "example_headline_word1") ||
+        CONTAINS(LCASE(?headline), "example_headline_word2")
       )
     }
     `,
     `
-    SELECT DISTINCT ?name ?description ?contentText
+    SELECT DISTINCT ?headline ?articleBody ?keywordName
     WHERE {
-      ?s a <http://schema.org/CreativeWork> .
-      ?s <http://schema.org/name> ?name .
-      ?s <http://schema.org/description> ?description .
-      ?s <http://schema.org/content> ?content .
-      ?content <http://schema.org/text> ?contentText .
+      ?s a <http://schema.org/SocialMediaPosting> .
+      ?s <http://schema.org/headline> ?headline .
+      ?s <http://schema.org/articleBody> ?articleBody .
       ?s <http://schema.org/keywords> ?keyword .
       ?keyword <http://schema.org/name> ?keywordName .
       FILTER(
@@ -102,13 +155,11 @@ export const dkgMemoryTemplate = {
     }
     `,
     `
-    SELECT DISTINCT ?name ?description ?contentText
+    SELECT DISTINCT ?headline ?articleBody ?aboutName
     WHERE {
-      ?s a <http://schema.org/CreativeWork> .
-      ?s <http://schema.org/name> ?name .
-      ?s <http://schema.org/description> ?description .
-      ?s <http://schema.org/content> ?content .
-      ?content <http://schema.org/text> ?contentText .
+      ?s a <http://schema.org/SocialMediaPosting> .
+      ?s <http://schema.org/headline> ?headline .
+      ?s <http://schema.org/articleBody> ?articleBody .
       ?s <http://schema.org/about> ?about .
       ?about <http://schema.org/name> ?aboutName .
       FILTER(
@@ -117,21 +168,19 @@ export const dkgMemoryTemplate = {
       )
     }
     `,
-  ];
+];
 
-  export const generalSparqlQuery = `
-    SELECT DISTINCT ?name ?description ?contentText
+export const generalSparqlQuery = `
+    SELECT DISTINCT ?headline ?articleBody
     WHERE {
-      ?s a <http://schema.org/CreativeWork> .
-      ?s <http://schema.org/name> ?name .
-      ?s <http://schema.org/description> ?description .
-      ?s <http://schema.org/content> ?content .
-      ?content <http://schema.org/text> ?contentText .
+      ?s a <http://schema.org/SocialMediaPosting> .
+      ?s <http://schema.org/headline> ?headline .
+      ?s <http://schema.org/articleBody> ?articleBody .
     }
     LIMIT 10
   `;
 
-  export const DKG_EXPLORER_LINKS = {
+export const DKG_EXPLORER_LINKS = {
     testnet: "https://dkg-testnet.origintrail.io/explore?ual=",
     mainnet: "https://dkg.origintrail.io/explore?ual=",
-  };
+};
