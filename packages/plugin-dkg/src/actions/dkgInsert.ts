@@ -184,19 +184,41 @@ export const dkgInsert: Action = {
             _state
         );
 
-        console.log("Publishing message to DKG");
-        const createAssetResult = await DkgClient.asset.create(
-            {
-                public: postKnowledgeGraph,
-            },
-            { epochsNum: 12 }
-        );
-        console.log("======================== ASSET CREATED");
-        console.log(createAssetResult);
+        let createAssetResult;
+
+        try {
+            console.log("Publishing message to DKG");
+
+            createAssetResult = await DkgClient.asset.create(
+                {
+                    public: postKnowledgeGraph,
+                },
+                { epochsNum: 12 }
+            );
+
+            console.log("======================== ASSET CREATED");
+            console.log(createAssetResult);
+        } catch (error) {
+            console.error(
+                "Error occurred while publishing message to DKG:",
+                error.message
+            );
+
+            // Optionally log additional error details
+            if (error.stack) {
+                console.error("Stack trace:", error.stack);
+            }
+            if (error.response) {
+                console.error(
+                    "Response data:",
+                    JSON.stringify(error.response.data, null, 2)
+                );
+            }
+        }
 
         // postAction
         await postTweet(
-            `Created a new memory!\nRead my mind on @origin_trail Decentralized Knowledge Graph ${DKG_EXPLORER_LINKS.testnet}${createAssetResult.UAL} @${twitterUser}`
+            `Created a new memory!\n\nRead my mind on @origin_trail Decentralized Knowledge Graph ${DKG_EXPLORER_LINKS[process.env.ENVIRONMENT]}${createAssetResult.UAL} @${twitterUser}`
         );
 
         // await sendNotification(
