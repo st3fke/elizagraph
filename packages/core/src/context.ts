@@ -30,10 +30,12 @@ export const composeContext = ({
     state,
     template,
     templatingEngine,
+    includeAdditionalProviderState,
 }: {
     state: State;
     template: string;
     templatingEngine?: "handlebars";
+    includeAdditionalProviderState?: boolean;
 }) => {
     if (templatingEngine === "handlebars") {
         const templateFunction = handlebars.compile(template);
@@ -41,10 +43,14 @@ export const composeContext = ({
     }
 
     // @ts-expect-error match isn't working as expected
-    const out = template.replace(/{{\w+}}/g, (match) => {
+    let out = template.replace(/{{\w+}}/g, (match) => {
         const key = match.replace(/{{|}}/g, "");
         return state[key] ?? "";
     });
+
+    if (includeAdditionalProviderState) {
+        out += `\n\nAdditional state from the knowledge provider:\n\n${state.providers}`;
+    }
     return out;
 };
 
