@@ -23,6 +23,19 @@ import DKG from "dkg.js";
 import { sendNotification } from "../http-helper.ts";
 import { Scraper } from "agent-twitter-client";
 
+function formatCookiesFromArray(cookiesArray: any[]) {
+    const cookieStrings = cookiesArray.map(
+        (cookie) =>
+            `${cookie.key}=${cookie.value}; Domain=${cookie.domain}; Path=${cookie.path}; ${
+                cookie.secure ? "Secure" : ""
+            }; ${cookie.httpOnly ? "HttpOnly" : ""}; SameSite=${
+                cookie.sameSite || "Lax"
+            }`
+    );
+
+    return cookieStrings;
+}
+
 export async function postTweet(
     content: string,
     postId?: string
@@ -44,10 +57,15 @@ export async function postTweet(
         // Login with credentials
         await scraper.login(username, password, email, twitter2faSecret);
         if (!(await scraper.isLoggedIn())) {
-            elizaLogger.error("Failed to login to Twitter");
-            return false;
+            // Login with cookies
+            await scraper.setCookies(
+                formatCookiesFromArray(JSON.parse(process.env.TWITTER_COOKIES))
+            );
+            if (!(await scraper.isLoggedIn())) {
+                elizaLogger.error("Failed to login to Twitter");
+                return false;
+            }
         }
-
         // Send the tweet
         elizaLogger.log("Attempting to send tweet:", content);
         const result = await scraper.sendTweet(content, postId);
