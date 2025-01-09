@@ -23,7 +23,10 @@ import DKG from "dkg.js";
 import { sendNotification } from "../http-helper.ts";
 import { Scraper } from "agent-twitter-client";
 
-export async function postTweet(content: string): Promise<boolean> {
+export async function postTweet(
+    content: string,
+    postId?: string
+): Promise<boolean> {
     try {
         const scraper = new Scraper();
         const username = process.env.TWITTER_USERNAME;
@@ -47,7 +50,7 @@ export async function postTweet(content: string): Promise<boolean> {
 
         // Send the tweet
         elizaLogger.log("Attempting to send tweet:", content);
-        const result = await scraper.sendTweet(content);
+        const result = await scraper.sendTweet(content, postId);
 
         const body = await result.json();
         elizaLogger.log("Tweet response:", body);
@@ -163,19 +166,32 @@ export const dkgInsert: Action = {
         _options: { [key: string]: unknown },
         _callback: HandlerCallback
     ): Promise<boolean> => {
-        console.log("currentPost");
-        console.log(_state.currentPost);
+        const currentPost = String(_state.currentPost);
+        elizaLogger.log("currentPost");
+        elizaLogger.log(currentPost);
 
         const userRegex = /From:.*\(@(\w+)\)/;
-        const match = String(_state.currentPost).match(userRegex);
+        let match = currentPost.match(userRegex);
         let twitterUser = "";
 
         if (match && match[1]) {
             twitterUser = match[1];
-            console.log(`Extracted user: @${twitterUser}`);
+            elizaLogger.log(`Extracted user: @${twitterUser}`);
         } else {
-            console.error("No user mention found or invalid input.");
+            elizaLogger.error("No user mention found or invalid input.");
         }
+
+        const idRegex = /ID:\s(\d+)/;
+        match = currentPost.match(idRegex);
+        let postId = "";
+
+        if (match && match[1]) {
+            postId = match[1];
+            elizaLogger.log(`Extracted ID: ${postId}`);
+        } else {
+            elizaLogger.log("No ID found.");
+        }
+
         const additionalContext = String(_state.recentMessageInteractions);
         const postKnowledgeGraph = await constructKnowledgeAsset(
             _runtime,
@@ -187,7 +203,7 @@ export const dkgInsert: Action = {
         let createAssetResult;
 
         try {
-            console.log("Publishing message to DKG");
+            elizaLogger.log("Publishing message to DKG");
 
             createAssetResult = await DkgClient.asset.create(
                 {
@@ -196,20 +212,20 @@ export const dkgInsert: Action = {
                 { epochsNum: 12 }
             );
 
-            console.log("======================== ASSET CREATED");
-            console.log(createAssetResult);
+            elizaLogger.log("======================== ASSET CREATED");
+            elizaLogger.log(JSON.stringify(createAssetResult));
         } catch (error) {
-            console.error(
+            elizaLogger.error(
                 "Error occurred while publishing message to DKG:",
                 error.message
             );
 
             // Optionally log additional error details
             if (error.stack) {
-                console.error("Stack trace:", error.stack);
+                elizaLogger.error("Stack trace:", error.stack);
             }
             if (error.response) {
-                console.error(
+                elizaLogger.error(
                     "Response data:",
                     JSON.stringify(error.response.data, null, 2)
                 );
@@ -218,7 +234,8 @@ export const dkgInsert: Action = {
 
         // postAction
         await postTweet(
-            `Created a new memory!\n\nRead my mind on @origin_trail Decentralized Knowledge Graph ${DKG_EXPLORER_LINKS[process.env.ENVIRONMENT]}${createAssetResult.UAL} @${twitterUser}`
+            `Created a new memory!\n\nRead my mind on @origin_trail Decentralized Knowledge Graph ${DKG_EXPLORER_LINKS[process.env.ENVIRONMENT]}${createAssetResult.UAL} @${twitterUser}`,
+            postId
         );
 
         // await sendNotification(
