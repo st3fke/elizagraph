@@ -1,24 +1,24 @@
+![image](https://github.com/user-attachments/assets/17da3a5f-aed1-43d4-ab83-d984a9cc06df)
+
+
 # @elizaos/plugin-dkg
 
-A plugin enabling integration with the OriginTrail Decentralized Knowledge Graph (DKG) for enhanced search and knowledge management capabilities in ElizaOS agents.
+ElizaOS agent powered by Knowledge Graph memories.
+Based on the ElizaOS plugin enabling integration with the OriginTrail Decentralized Knowledge Graph (DKG) for enhanced knowledge graph retrieval, search and knowledge management with ElizaOS agents.
 
 ## Description
 
-The DKG plugin extends ElizaOS functionality by allowing agents to interact with the OriginTrail Decentralized Knowledge Graph. This plugin enables SPARQL-based searches on the DKG and combines these results with Eliza's regular search results. Additionally, it creates a memory as a Knowledge Asset on the DKG after a response, making it available for future SPARQL queries.
+The DKG plugin extends ElizaOS functionality by allowing agents to create knowledge graph based memories in the form of Knowledge assets on the OriginTrail Decentralized Knowledge Graph. This plugin enables SPARQL-based searches on the DKG and combines these results with Eliza's regular search results. Additionally, it creates a memory as a Knowledge Asset on the DKG after a response, making it available for future SPARQL queries.
 
-## Installation
+This is an experimental project. Feel free to clone, play around and contribute bug fixes or new features. Use this repo as a "agent starter repo". The plugin-dkg will be included into the official ElizaOS repo as well in the coming weeks
 
-(This will only work once the official DKG plugin is integrated to ElizaOS)
-
-```bash
-pnpm install @elizaos/plugin-dkg
-```
+Check out the example agent running on X: https://x.com/ChatDKG
 
 ## Features
 
-### 1. DKG Integration
+### 1. OriginTrail DKG Integration
 
-- Perform SPARQL queries on the DKG for knowledge extraction.
+- Perform knowledge graph queries on the DKG for knowledge extraction (using SPARQL)
 - Combine DKG query results with Eliza's internal search capabilities.
 - Enhance responses with decentralized and trusted knowledge.
 
@@ -41,6 +41,15 @@ pnpm install @elizaos/plugin-dkg
 
 - Creates Knowledge Assets from agent interactions.
 - Publishes assets to the DKG with contextual metadata.
+
+## INSTALLATION
+
+## Prerequisites
+
+- Python 2.7+
+- Node.js 23+
+- pnpm
+
 
 ## Development
 
@@ -84,6 +93,7 @@ pnpm run lint
     ```bash
     pnpm start --characters="characters/chatdkg.character.json"
     ```
+
 
 ### Notes
 
