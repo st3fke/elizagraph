@@ -1,7 +1,7 @@
 ![image](https://github.com/user-attachments/assets/17da3a5f-aed1-43d4-ab83-d984a9cc06df)
 
 
-# @elizaos/plugin-dkg
+# Elizagraph - DKG Eliza Agent starter kit
 
 ElizaOS agent powered by Knowledge Graph memories.
 Based on the ElizaOS plugin enabling integration with the OriginTrail Decentralized Knowledge Graph (DKG) for enhanced knowledge graph retrieval, search and knowledge management with ElizaOS agents.
