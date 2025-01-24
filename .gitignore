@@ -1,9 +1,6 @@
 node_modules
 /out
 
-.env.production
-.env.local
-.env_main
 concatenated-output.ts
 embedding-cache.json
 packages/plugin-buttplug/intiface-engine
