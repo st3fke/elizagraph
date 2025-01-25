@@ -1,190 +1,94 @@
-import dotenv from "dotenv";
-dotenv.config();
-import {
-    IAgentRuntime,
-    Memory,
-    Provider,
-    State,
-    elizaLogger,
-    generateText,
-    ModelClass,
-} from "@elizaos/core";
-import {
-    combinedSparqlExample,
-    dkgMemoryTemplate,
-    generalSparqlQuery,
-    sparqlExamples,
-} from "../constants.ts";
-// @ts-ignore
-import DKG from "dkg.js";
+import { DKG } from "dkg.js";
+import { elizaLogger } from "@elizaos/core"; // Logovanje, obavezno koristi log funkcije
+import { generateText } from "@elizaos/core";  // Za korišćenje OpenAI generativnih funkcija
 
-// Provider configuration
-const PROVIDER_CONFIG = {
-    environment: process.env.ENVIRONMENT || "testnet",
-    endpoint: process.env.OT_NODE_HOSTNAME || "http://default-endpoint",
-    port: process.env.OT_NODE_PORT || "8900",
-    blockchain: {
-        name: process.env.BLOCKCHAIN_NAME || "base:84532",
-        publicKey: process.env.PUBLIC_KEY || "",
-        privateKey: process.env.PRIVATE_KEY || "",
-    },
-    maxNumberOfRetries: 300,
-    frequency: 2,
-    contentType: "all",
-    nodeApiVersion: "/v1",
+// Kreiranje instance DKG klijenta
+const DkgClient = new DKG({
+  environment: process.env.ENVIRONMENT,
+  endpoint: process.env.OT_NODE_HOSTNAME,
+  port: process.env.OT_NODE_PORT,
+  blockchain: {
+    name: process.env.BLOCKCHAIN_NAME,
+    publicKey: process.env.PUBLIC_KEY,
+    privateKey: process.env.PRIVATE_KEY,
+  },
+  maxNumberOfRetries: 300,
+  frequency: 2,
+  contentType: "all",
+  nodeApiVersion: "/v1",
+});
+
+// Funkcija za pretragu destinacija u DKG-u
+export const dkgSearch = async (query: string) => {
+  try {
+    // Upit prema DKG-u
+    const result = await DkgClient.query(query);
+    elizaLogger.log("DKG Search Result:", result);
+
+    return result;  // Vraća rezultate pretrage
+  } catch (error) {
+    elizaLogger.error("Error occurred during DKG search:", error);
+    throw error;  // Vraća grešku ako dođe do problema sa pretragom
+  }
 };
 
-interface BlockchainConfig {
-    name: string;
-    publicKey: string;
-    privateKey: string;
-}
-
-interface DKGClientConfig {
-    environment: string;
-    endpoint: string;
-    port: string;
-    blockchain: BlockchainConfig;
-    maxNumberOfRetries?: number;
-    frequency?: number;
-    contentType?: string;
-    nodeApiVersion?: string;
-}
-
-async function constructSparqlQuery(
-    runtime: IAgentRuntime,
-    userQuery: string
-): Promise<string> {
-    const context = `
-    You are tasked with generating a SPARQL query to retrieve information from a Decentralized Knowledge Graph (DKG).
-    The query should align with the JSON-LD memory template provided below:
-
-    ${JSON.stringify(dkgMemoryTemplate)}
-
-    ** Examples **
-    Use the following SPARQL example to understand the format:
-    ${combinedSparqlExample}
-
-    ** Instructions **
-    1. Analyze the user query and identify the key fields and concepts it refers to.
-    2. Use these fields and concepts to construct a SPARQL query.
-    3. Ensure the SPARQL query follows standard syntax and can be executed against the DKG.
-    4. Use 'OR' logic when constructing the query to ensure broader matching results. For example, if multiple keywords or concepts are provided, the query should match any of them, not all.
-    5. Replace the examples with actual terms from the user's query.
-    6. Always select distinct results by adding the DISTINCT keyword.
-    7. Always select headline and article body. Do not select other fields.
-
-    ** User Query **
-    ${userQuery}
-
-    ** Output **
-    Provide only the SPARQL query, wrapped in a sparql code block for clarity.
+// Funkcija koja pretražuje destinacije prema imenu
+export const searchDestinationByName = async (destinationName: string) => {
+  const query = `
+    SELECT ?destination WHERE {
+      ?destination a schema:TouristDestination ;
+                  schema:name ?name .
+      FILTER(CONTAINS(LCASE(?name), LCASE("${destinationName}")))
+    }
   `;
 
-    const sparqlQuery = await generateText({
-        runtime,
-        context,
-        modelClass: ModelClass.LARGE,
+  return await dkgSearch(query);  // Poziva pretragu sa upitom
+};
+
+// Proverava postojanje destinacije u DKG-u
+export const checkDestinationExistence = async (destinationName: string): Promise<boolean> => {
+  const result = await searchDestinationByName(destinationName);
+  return result.length > 0;  // Ako destinacija postoji, vraća true
+};
+
+// Generiše nove podatke o destinaciji koristeći OpenAI
+export const generateNewDestination = async (destination: string, season: string, keywords: string) => {
+  const prompt = `
+    Generate a detailed tourist destination description for a location named "${destination}".
+    Include information about the season "${season}", relevant activities, and the following keywords: "${keywords}".
+  `;
+
+  const generatedText = await generateText({
+    runtime: null,  // Možeš proslediti runtime, ako je potrebno
+    context: prompt,
+    modelClass: "large", // Možeš promeniti model prema potrebi
+  });
+
+  return JSON.parse(generatedText);  // Pretpostavljamo da OpenAI vraća JSON format koji možemo direktno koristiti
+};
+
+// Funkcija za unos novih destinacija u DKG
+export const insertNewDestination = async (destinationData: any) => {
+  try {
+    const result = await DkgClient.asset.create({
+      public: destinationData,  // Ubacivanje podataka o destinaciji u DKG
     });
+    elizaLogger.log("New destination added to DKG: ", result);
+  } catch (error) {
+    elizaLogger.error("Error inserting new destination: ", error);
+  }
+};
 
-    return sparqlQuery.replace(/```sparql|```/g, "").trim();
-}
+// Glavni tok za proveru i unos novih destinacija
+export const handleNewDestination = async (destinationName: string, season: string, keywords: string) => {
+  const exists = await checkDestinationExistence(destinationName);
 
-export class DKGProvider {
-    private client: any; // TODO: add type
-    constructor(config: DKGClientConfig) {
-        this.validateConfig(config);
-    }
-
-    private validateConfig(config: DKGClientConfig): void {
-        const requiredStringFields = ["environment", "endpoint", "port"];
-
-        for (const field of requiredStringFields) {
-            if (typeof config[field as keyof DKGClientConfig] !== "string") {
-                throw new Error(
-                    `Invalid configuration: Missing or invalid value for '${field}'`
-                );
-            }
-        }
-
-        if (!config.blockchain || typeof config.blockchain !== "object") {
-            throw new Error(
-                "Invalid configuration: 'blockchain' must be an object"
-            );
-        }
-
-        const blockchainFields = ["name", "publicKey", "privateKey"];
-
-        for (const field of blockchainFields) {
-            if (
-                typeof config.blockchain[field as keyof BlockchainConfig] !==
-                "string"
-            ) {
-                throw new Error(
-                    `Invalid configuration: Missing or invalid value for 'blockchain.${field}'`
-                );
-            }
-        }
-
-        this.client = new DKG(config);
-    }
-
-    async search(runtime: IAgentRuntime, message: Memory): Promise<string> {
-        elizaLogger.info(`Entering graph search provider!`);
-
-        const userQuery = message.content.text;
-
-        elizaLogger.info(`Got user query ${JSON.stringify(userQuery)}`);
-
-        const query = await constructSparqlQuery(runtime, userQuery);
-        elizaLogger.info(`Generated SPARQL query: ${query}`);
-
-        let queryOperationResult = await this.client.graph.query(
-            query,
-            "SELECT"
-        );
-
-        if (!queryOperationResult || !queryOperationResult.data?.length) {
-            elizaLogger.info(
-                `LLM-generated SPARQL query failed, defaulting to basic query.`
-            );
-
-            queryOperationResult = await this.client.graph.query(
-                generalSparqlQuery,
-                "SELECT"
-            );
-        }
-
-        elizaLogger.info(
-            `Got ${queryOperationResult.data.length} results from the DKG`
-        );
-
-        // TODO: take 5 results instead of all based on similarity probably
-        // TODO: idk dont love this format, maybe change it
-        const result = queryOperationResult.data.map((entry: any) => {
-            const formattedParts = Object.keys(entry).map(
-                (key) => `${key}: ${entry[key]}`
-            );
-            return formattedParts.join(", ");
-        });
-
-        return result.join("\n");
-    }
-}
-
-export const graphSearch: Provider = {
-    get: async (
-        runtime: IAgentRuntime,
-        _message: Memory,
-        _state?: State
-    ): Promise<string | null> => {
-        try {
-            const provider = new DKGProvider(PROVIDER_CONFIG);
-
-            return await provider.search(runtime, _message);
-        } catch (error) {
-            console.error("Error in wallet provider:", error);
-            return null;
-        }
-    },
+  if (exists) {
+    elizaLogger.log(`Destinacija ${destinationName} već postoji u DKG-u.`);
+  } else {
+    // Ako destinacija ne postoji, generiši nove podatke
+    const newDestinationData = await generateNewDestination(destinationName, season, keywords);
+    await insertNewDestination(newDestinationData);  // Unos nove destinacije u DKG
+    elizaLogger.log(`Novi podaci za destinaciju ${destinationName} su uspešno uneseni u DKG.`);
+  }
 };
