@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
-import { v4 as uuidv4 } from 'uuid'; // Za generisanje roomId
+import { v4 as uuidv4 } from 'uuid';
+import { IAgentRuntime } from "@elizaos/core";
+import { apiClient } from '../lib/api'; // Adjust the path accordingly
 
-const TravelForm = ({ runtime }) => {
+const TravelForm = ({ runtime }: { runtime: IAgentRuntime }) => {
     const [destination, setDestination] = useState('');
     const [startingPoint, setStartingPoint] = useState('');
     const [startingDate, setStartingDate] = useState('');
@@ -9,11 +11,10 @@ const TravelForm = ({ runtime }) => {
     const [keywords, setKeywords] = useState('');
     const [response, setResponse] = useState('');
 
-    // Pretpostavljamo da je korisnik ulogovan
-    const userId = 'user123'; // Ovo bi došlo sa autentifikacije
-    const roomId = 'room-' + uuidv4(); // Generisani roomId za svaki novi chat
+    const userId = 'user123'; // Replace with actual user ID from auth
+    const roomId = 'room-' + uuidv4(); // Unique roomId for each chat
 
-    // Funkcija za slanje podataka agentu i dobijanje odgovora
+    // Handle form submission
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
@@ -22,30 +23,27 @@ const TravelForm = ({ runtime }) => {
             return;
         }
 
-        // Kreiranje poruke sa destinacijom, početnom destinacijom, datumom početka, datumom kraja i dodatnim podacima
-        const message = {
-            content: {
-                text: `${startingPoint}`,
-                destination: `${destination}`,
-                dateStarting: `${startingDate}`,
-                dateEnding: `${endingDate}`,
-                keywords: `${keywords}`,
-            },
-            roomId,  // Jedinstveni identifikator sobe
-            userId,  // Jedinstveni identifikator korisnika
-            agentId: localStorage.getItem("selectedAgentId"),  // Jedinstveni identifikator agenta (ako ga imaš)
+        // Create message with travel details
+        const messageData = {
+            destination,
+            startingPoint,
+            startingDate,
+            endingDate,
+            keywords,
+            roomId,
+            userId,
+            agentId: localStorage.getItem("selectedAgentId") || null,  // Ensure we have an agent ID
         };
 
-        // Pretpostavljamo da imamo funkciju koja može da dobije context od agenta
-        const state = await runtime.composeState(message);
-
-        // Pomoću runtime.getContextProvider možemo pozvati agenta sa potrebnim podacima
+        // Send travel data to API
         try {
-            const agentResponse = await runtime.getContextProvider('flightProvider').get(runtime, message, state);
-            setResponse(agentResponse); // Postavljamo odgovor u stanje za prikaz
+            console.log("Pre", messageData);
+            const agentResponse = await apiClient.sendTravelData(messageData); // Send data using the API client
+            console.log("posle", messageData);
+            setResponse(`Agent Response: ${agentResponse}`);
         } catch (error) {
-            console.error('Error getting response from agent:', error);
-            setResponse('Sorry, there was an error while fetching the response.');
+            console.error('Error sending travel data:', error);
+            setResponse('Sorry, there was an error while sending travel data.');
         }
     };
 

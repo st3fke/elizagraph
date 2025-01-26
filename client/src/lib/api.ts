@@ -22,14 +22,14 @@ const fetcher = async ({
 
     if (method === "POST") {
         if (body instanceof FormData) {
-            delete options.headers["Content-Type"]; // This is fine now
             options.body = body;
         } else {
             options.body = JSON.stringify(body);
         }
     }
-
+    console.log("Pre responsa")
     const response = await fetch(url, options);
+    console.log("Posle responsa")
     if (!response.ok) {
         const errorText = await response.text();
         console.error(`Error fetching ${url}: `, errorText);
@@ -53,11 +53,6 @@ export const apiClient = {
                 fetcher({ url: "http://localhost:3001/agents" }),
             ]);
 
-            // Log the raw responses for debugging
-            console.log("Response from 3000:", response1);
-            console.log("Response from 3001:", response2);
-
-            // A function to safely access the agents array
             const extractAgents = (response: any): Agent[] => {
                 if (Array.isArray(response)) {
                     return response;
@@ -69,15 +64,31 @@ export const apiClient = {
                 }
             };
 
-            // Extract agents from both responses
             const agents1 = extractAgents(response1);
             const agents2 = extractAgents(response2);
 
-            // Combine the agents from both responses
             return [...agents1, ...agents2];
         } catch (error) {
             console.error("Error fetching agents:", error);
             throw error;
         }
+    },
+    // New method to send travel data
+    sendTravelData: async (data: {
+        destination: string;
+        startingPoint: string;
+        startingDate: string;
+        endingDate: string;
+        keywords: string;
+        roomId: string;
+        userId: string;
+        agentId: string | null; // agentId can be null
+    }) => {
+        console.log("Usao u send travel Data");
+        return fetcher({
+            url: "http://localhost:3000/sendTravelDetails", // or your actual endpoint
+            method: "POST",
+            body: data,
+        });
     },
 };

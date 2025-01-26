@@ -99,6 +99,10 @@ export function createApiRouter(
         });
     });
 
+    router.post("/sendTravelDetails", async (req, res) => {
+        console.log('Received travel data:', req.body);
+
+    });
     router.get("/agents/:agentId/channels", async (req, res) => {
         const agentId = req.params.agentId;
         const runtime = agents.get(agentId);
@@ -185,6 +189,7 @@ export function createApiRouter(
             res.status(500).json({ error: "Failed to fetch memories" });
         }
     });
+
 
     return router;
 }
