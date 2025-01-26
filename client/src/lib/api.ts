@@ -1,6 +1,4 @@
-import type { UUID, Character } from "@elizaos/core";
-
-const BASE_URL = `http://localhost:${import.meta.env.VITE_SERVER_PORT ?? 3000}`;
+import type { Agent } from "../types/Agent";  // Assuming Agent type is correctly defined
 
 const fetcher = async ({
     url,
@@ -11,95 +9,75 @@ const fetcher = async ({
     url: string;
     method?: "GET" | "POST";
     body?: object | FormData;
-    headers?: HeadersInit;
+    headers?: Record<string, string>; // Use Record for headers
 }) => {
     const options: RequestInit = {
         method: method ?? "GET",
-        headers: headers
-            ? headers
-            : {
-                  Accept: "application/json",
-                  "Content-Type": "application/json",
-              },
+        headers: {
+            Accept: "application/json",
+            "Content-Type": "application/json",
+            ...(headers ?? {}), // Merge with provided headers if any
+        },
     };
 
     if (method === "POST") {
         if (body instanceof FormData) {
-            // @ts-expect-error - Suppressing potentially undefined options header
-            delete options.headers["Content-Type"];
+            delete options.headers["Content-Type"]; // This is fine now
             options.body = body;
         } else {
             options.body = JSON.stringify(body);
         }
     }
 
-    return fetch(`${BASE_URL}${url}`, options).then(async (resp) => {
-        if (resp.ok) {
-            const contentType = resp.headers.get("Content-Type");
+    const response = await fetch(url, options);
+    if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`Error fetching ${url}: `, errorText);
+        throw new Error(errorText || 'Failed to fetch data');
+    }
 
-            if (contentType === "audio/mpeg") {
-                return await resp.blob();
-            }
-            return resp.json();
-        }
-
-        const errorText = await resp.text();
-        console.error("Error: ", errorText);
-
-        let errorMessage = "An error occurred.";
-        try {
-            const errorObj = JSON.parse(errorText);
-            errorMessage = errorObj.message || errorMessage;
-        } catch {
-            errorMessage = errorText || errorMessage;
-        }
-
-        throw new Error(errorMessage);
+    // Log and parse as JSON
+    const data = await response.json().catch((err) => {
+        console.error(`Error parsing JSON from ${url}: ${err}`);
+        throw new Error('Failed to parse JSON response');
     });
+    console.log(`Fetched data from ${url}:`, data);
+    return data;
 };
 
 export const apiClient = {
-    sendMessage: (
-        agentId: string,
-        message: string,
-        selectedFile?: File | null
-    ) => {
-        const formData = new FormData();
-        formData.append("text", message);
-        formData.append("user", "user");
+    fetchAgents: async (): Promise<Agent[]> => {
+        try {
+            const [response1, response2] = await Promise.all([
+                fetcher({ url: "http://localhost:3000/agents" }),
+                fetcher({ url: "http://localhost:3001/agents" }),
+            ]);
 
-        if (selectedFile) {
-            formData.append("file", selectedFile);
+            // Log the raw responses for debugging
+            console.log("Response from 3000:", response1);
+            console.log("Response from 3001:", response2);
+
+            // A function to safely access the agents array
+            const extractAgents = (response: any): Agent[] => {
+                if (Array.isArray(response)) {
+                    return response;
+                } else if (typeof response === 'object' && response.agents && Array.isArray(response.agents)) {
+                    return response.agents; // Handle if agents are inside an object
+                } else {
+                    console.error("Unexpected response structure:", response);
+                    throw new Error("Unexpected response structure.");
+                }
+            };
+
+            // Extract agents from both responses
+            const agents1 = extractAgents(response1);
+            const agents2 = extractAgents(response2);
+
+            // Combine the agents from both responses
+            return [...agents1, ...agents2];
+        } catch (error) {
+            console.error("Error fetching agents:", error);
+            throw error;
         }
-        return fetcher({
-            url: `/${agentId}/message`,
-            method: "POST",
-            body: formData,
-        });
-    },
-    getAgents: () => fetcher({ url: "/agents" }),
-    getAgent: (agentId: string): Promise<{ id: UUID; character: Character }> =>
-        fetcher({ url: `/agents/${agentId}` }),
-    tts: (agentId: string, text: string) =>
-        fetcher({
-            url: `/${agentId}/tts`,
-            method: "POST",
-            body: {
-                text,
-            },
-            headers: {
-                "Content-Type": "application/json",
-                Accept: "audio/mpeg",
-                "Transfer-Encoding": "chunked",
-            },
-        }),
-    whisper: async (agentId: string, audioBlob: Blob) => {
-        const formData = new FormData();
-        formData.append("file", audioBlob, "recording.wav");
-        return fetcher({
-            url: `/${agentId}/whisper`,
-            method: "POST",
-            body: formData,
-        });
     },
 };
