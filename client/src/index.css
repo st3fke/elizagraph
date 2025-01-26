@@ -1,7 +1,17 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+body {
+  @apply bg-gray-100 text-gray-800;
+}
 
+[data-theme="dark"] {
+  @apply bg-gray-900 text-white;
+}
+
+button {
+  @apply focus:outline-none focus:ring-2 focus:ring-offset-2;
+}
 @layer base {
     :root {
         --background: 0 0% 100%;
