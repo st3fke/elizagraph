@@ -42,7 +42,9 @@ export function createApiRouter(
             name: agent.character.name,
             clients: Object.keys(agent.clients),
         }));
-        res.json({ agents: agentsList });
+
+        // Proveri da li je agentsList niz, inače pošaljite prazan niz
+        res.json({ agents: Array.isArray(agentsList) ? agentsList : [] });
     });
 
     router.get("/agents/:agentId", (req, res) => {
