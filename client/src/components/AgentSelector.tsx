@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom"; // Import useNavigate for routing
-import { apiClient } from "../lib/api"; // Adjust based on your structure
+import { useNavigate } from "react-router-dom";
+import { apiClient } from "../lib/api";
 
 interface Agent {
     id: string;
@@ -11,13 +11,14 @@ const AgentSelector: React.FC = () => {
     const [agents, setAgents] = useState<Agent[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null); // State for selected agent
-    const navigate = useNavigate(); // Initialize useNavigate for routing
+    const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
+    const navigate = useNavigate();
 
     useEffect(() => {
+        // Load the agents when the component mounts
         const loadAgents = async () => {
             try {
-                const agentsData = await apiClient.fetchAgents(); // Fetch combined agents
+                const agentsData = await apiClient.fetchAgents();
                 setAgents(agentsData);
             } catch (err) {
                 setError(`Failed to fetch agents: ${err instanceof Error ? err.message : 'Unknown error'}`);
@@ -30,9 +31,21 @@ const AgentSelector: React.FC = () => {
         loadAgents();
     }, []);
 
+    // Load the selected agent from local storage
+    useEffect(() => {
+        const storedAgentId = localStorage.getItem("selectedAgentId");
+        if (storedAgentId) {
+            const storedAgent = agents.find(agent => agent.id === storedAgentId);
+            if (storedAgent) {
+                setSelectedAgent(storedAgent);
+            }
+        }
+    }, [agents]); // Run this effect whenever agents change
+
     const handleAgentSelection = (agent: Agent) => {
         setSelectedAgent(agent);
-        navigate("/form", { state: { agent } }); // Navigate to TravelForm with agent data
+        localStorage.setItem("selectedAgentId", agent.id); // Store selected agent in local storage
+        navigate("/form", { state: { agent } });
     };
 
     if (loading) return <div>Loading agents...</div>;
