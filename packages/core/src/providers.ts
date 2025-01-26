@@ -12,6 +12,7 @@ export async function getProviders(
     message: Memory,
     state?: State
 ) {
+    console.log(runtime.providers);
     const providerResults = (
         await Promise.all(
             runtime.providers.map(async (provider) => {
