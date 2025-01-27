@@ -86,7 +86,7 @@ export const apiClient = {
     }) => {
         console.log("Usao u send travel Data");
         return fetcher({
-            url: "http://localhost:3000/sendTravelDetails", // or your actual endpoint
+            url: `http://localhost:3001/agents/${localStorage.getItem("selectedAgentId")}/travel`, // or your actual endpoint
             method: "POST",
             body: data,
         });

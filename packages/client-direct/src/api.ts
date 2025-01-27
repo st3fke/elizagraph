@@ -64,44 +64,79 @@ export function createApiRouter(
     });
 
     router.post("/agents/:agentId/set", async (req, res) => {
-        const agentId = req.params.agentId;
-        console.log("agentId", agentId);
-        let agent: AgentRuntime = agents.get(agentId);
+        console.log('Received travel data:', req.body);
+        const {
+            destination,
+            startingPoint,
+            startingDate,
+            endingDate,
+            keywords,
+            roomId,
+            userId,
+            agentId
+        } = req.body;
 
-        // update character
-        if (agent) {
-            // stop agent
-            agent.stop();
-            directClient.unregisterAgent(agent);
-            // if it has a different name, the agentId will change
+        // Basic validation
+        if (!destination || !startingPoint || !startingDate || !endingDate || !keywords || !roomId || !userId) {
+
+            res.status(400).json({ message: 'All fields are required.' });
+            return
         }
 
-        // load character from body
-        const character = req.body;
         try {
-            validateCharacterConfig(character);
-        } catch (e) {
-            elizaLogger.error(`Error parsing character: ${e}`);
-            res.status(400).json({
-                success: false,
-                message: e.message,
-            });
-            return;
+            // Here you would handle the travel data
+            // For instance, you might save it to a database or call another service
+            console.log("Received travel details:", req.body);
+
+            // Mock response: You may want to replace this logic with actual processing
+            const travelResponse = {
+                message: 'Travel details received successfully!',
+                data: req.body
+            };
+
+            // Send response back to the client
+            res.status(200).json(travelResponse);
+        } catch (error) {
+            console.error("Error processing travel details:", error);
+            res.status(500).json({ error: 'Failed to process travel details.' });
         }
-
-        // start it up (and register it)
-        agent = await directClient.startAgent(character);
-        elizaLogger.log(`${character.name} started`);
-
-        res.json({
-            id: character.id,
-            character: character,
-        });
     });
 
     router.post("/sendTravelDetails", async (req, res) => {
         console.log('Received travel data:', req.body);
+        const {
+            destination,
+            startingPoint,
+            startingDate,
+            endingDate,
+            keywords,
+            roomId,
+            userId,
+            agentId
+        } = req.body;
 
+
+        if (!destination || !startingPoint || !startingDate || !endingDate || !keywords || !roomId || !userId) {
+
+            res.status(400).json({ message: 'All fields are required.' });
+            return
+        }
+
+        try {
+
+            console.log("Received travel details:", req.body);
+
+            const travelResponse = {
+                message: 'Travel details received successfully!',
+                data: req.body
+            };
+
+
+            res.status(200).json(travelResponse);
+        } catch (error) {
+            console.error("Error processing travel details:", error);
+            res.status(500).json({ error: 'Failed to process travel details.' });
+        }
     });
     router.get("/agents/:agentId/channels", async (req, res) => {
         const agentId = req.params.agentId;

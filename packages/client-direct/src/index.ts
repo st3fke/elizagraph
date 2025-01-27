@@ -100,41 +100,6 @@ export class DirectClient {
 
         const apiRouter = createApiRouter(this.agents, this);
         this.app.use(apiRouter);
-        function listRoutes(app) {
-            const routes = {};
-
-            app._router.stack.forEach((middleware) => {
-              if (middleware.route) {
-                // Route object exists, get the methods and path
-                const methods = Object.keys(middleware.route.methods);
-                const path = middleware.route.path;
-
-                methods.forEach((method) => {
-                  if (!routes[method]) {
-                    routes[method] = [];
-                  }
-                  routes[method].push(path);
-                });
-              } else if (middleware.name === 'router' && middleware.handle.stack) {
-                // Handle nested routers
-                middleware.handle.stack.forEach((nested) => {
-                  if (nested.route) {
-                    const methods = Object.keys(nested.route.methods);
-                    const path = nested.route.path;
-
-                    methods.forEach((method) => {
-                      if (!routes[method]) {
-                        routes[method] = [];
-                      }
-                      routes[method].push(path);
-                    });
-                  }
-                });
-              }
-            });
-            return routes;
-          }
-          elizaLogger.log(listRoutes(this.app));
         // Define an interface that extends the Express Request interface
         interface CustomRequest extends ExpressRequest {
             file?: Express.Multer.File;
